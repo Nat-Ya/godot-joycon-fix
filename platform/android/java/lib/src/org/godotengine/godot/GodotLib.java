@@ -167,7 +167,7 @@ public class GodotLib {
 	/**
 	 * Fires when a joystick device is added or removed.
 	 */
-	public static native void joyconnectionchanged(int p_device, boolean p_connected, String p_name);
+	public static native void joyconnectionchanged(int p_device, boolean p_connected, String p_name, String p_guid);
 
 	/**
 	 * Invoked when the Android app resumes.

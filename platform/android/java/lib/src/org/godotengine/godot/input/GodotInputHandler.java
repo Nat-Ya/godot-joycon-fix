@@ -333,8 +333,10 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		}
 
 		// Device may not be a joystick or gamepad
+		// Joy-Con L and some controllers report as SOURCE_DPAD, so include that
 		if (!device.supportsSource(InputDevice.SOURCE_GAMEPAD) &&
-				!device.supportsSource(InputDevice.SOURCE_JOYSTICK)) {
+				!device.supportsSource(InputDevice.SOURCE_JOYSTICK) &&
+				!device.supportsSource(InputDevice.SOURCE_DPAD)) {
 			return;
 		}
 
@@ -345,7 +347,10 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		joystick.device_id = deviceId;
 		joystick.name = device.getName();
 
-		//Helps with creating new joypad mappings.
+		// Capture VID/PID for Joy-Con mapping
+		int vendorId = device.getVendorId();
+		int productId = device.getProductId();
+		String guid = String.format("Android%08x%08x", vendorId, productId);
 		Log.i(TAG, "=== New Input Device: " + joystick.name);
 
 		Set<Integer> already = new HashSet<>();
@@ -374,7 +379,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		}
 		mJoysticksDevices.put(deviceId, joystick);
 
-		handleJoystickConnectionChangedEvent(id, true, joystick.name);
+		handleJoystickConnectionChangedEvent(id, true, joystick.name, guid);
 	}
 
 	@Override
@@ -388,7 +393,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		final int godotJoyId = mJoystickIds.get(deviceId);
 		mJoystickIds.delete(deviceId);
 		mJoysticksDevices.delete(deviceId);
-		handleJoystickConnectionChangedEvent(godotJoyId, false, "");
+		handleJoystickConnectionChangedEvent(godotJoyId, false, "", "");
 	}
 
 	@Override
@@ -416,13 +421,13 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 				button = 9;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_L2:
-				button = 15;
+				button = 16; // PADDLE1 - Avoids conflicts with MISC1 and default case mapping
 				break;
 			case KeyEvent.KEYCODE_BUTTON_R1:
 				button = 10;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_R2:
-				button = 16;
+				button = 19; // PADDLE4 - Avoids conflicts with default case mapping
 				break;
 			case KeyEvent.KEYCODE_BUTTON_SELECT:
 				button = 4;
@@ -447,6 +452,11 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 				break;
 			case KeyEvent.KEYCODE_DPAD_RIGHT:
 				button = 14;
+				break;
+			case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP: // Joy-Con Capture/Screenshot button
+			case KeyEvent.KEYCODE_SYSRQ: // Some Joy-Cons emit SYSRQ for Capture (keyCode=120)
+			case 110: // Some devices report Capture as raw keyCode=110
+				button = 15;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_C:
 				button = 17;
@@ -702,11 +712,11 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		}
 	}
 
-	private void handleJoystickConnectionChangedEvent(int device, boolean connected, String name) {
+	private void handleJoystickConnectionChangedEvent(int device, boolean connected, String name, String guid) {
 		if (shouldDispatchInputToRenderThread()) {
-			mRenderView.queueOnRenderThread(() -> GodotLib.joyconnectionchanged(device, connected, name));
+			mRenderView.queueOnRenderThread(() -> GodotLib.joyconnectionchanged(device, connected, name, guid));
 		} else {
-			GodotLib.joyconnectionchanged(device, connected, name);
+			GodotLib.joyconnectionchanged(device, connected, name, guid);
 		}
 	}
 
