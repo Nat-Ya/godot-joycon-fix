@@ -333,8 +333,10 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		}
 
 		// Device may not be a joystick or gamepad
+		// Joy-Con L and some controllers report as SOURCE_DPAD, so include that
 		if (!device.supportsSource(InputDevice.SOURCE_GAMEPAD) &&
-				!device.supportsSource(InputDevice.SOURCE_JOYSTICK)) {
+				!device.supportsSource(InputDevice.SOURCE_JOYSTICK) &&
+				!device.supportsSource(InputDevice.SOURCE_DPAD)) {
 			return;
 		}
 
