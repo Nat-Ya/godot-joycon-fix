@@ -159,6 +159,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
+				Log.i(TAG, "KeyUp dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
 				handleJoystickButtonEvent(godotJoyId, button, false);
 			}
 		} else {
@@ -195,6 +196,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
+				Log.i(TAG, "KeyDown dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
 				handleJoystickButtonEvent(godotJoyId, button, true);
 			}
 		} else {
