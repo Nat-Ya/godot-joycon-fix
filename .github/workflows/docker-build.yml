@@ -1,0 +1,132 @@
+name: Build Godot Docker Image
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      godot_version:
+        description: 'Godot version tag (e.g., 4.3.stable)'
+        required: false
+        default: '4.3.stable'
+      docker_tag:
+        description: 'Docker image tag (default: branch name)'
+        required: false
+        default: ''
+
+  # Auto trigger on push to main branches
+  push:
+    branches:
+      - fix-joycon-dpad-android
+      - main
+    paths:
+      - '**/*.cpp'
+      - '**/*.h'
+      - 'SConstruct'
+      - 'platform/android/**'
+      - '.github/workflows/docker-build.yml'
+      - 'Dockerfile'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          # Convert repository name to lowercase
+          IMAGE_NAME_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_name=${IMAGE_NAME_LOWER}" >> $GITHUB_OUTPUT
+
+          # Determine Godot version
+          GODOT_VERSION="${{ github.event.inputs.godot_version }}"
+          if [ -z "$GODOT_VERSION" ]; then
+            GODOT_VERSION="4.3.stable"
+          fi
+          echo "godot_version=${GODOT_VERSION}" >> $GITHUB_OUTPUT
+
+          # Determine Docker tag
+          if [ -n "${{ github.event.inputs.docker_tag }}" ]; then
+            TAG="${{ github.event.inputs.docker_tag }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            TAG="latest"
+          elif [ "${{ github.ref }}" == "refs/heads/fix-joycon-dpad-android" ]; then
+            TAG="4.3-joycon-fix"
+          else
+            TAG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          fi
+
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          build-args: |
+            GODOT_BRANCH=${{ github.ref_name }}
+            GODOT_VERSION=${{ steps.meta.outputs.godot_version }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:sha-${{ steps.meta.outputs.sha_short }}
+          labels: |
+            org.opencontainers.image.title=Godot Engine with Joy-Con Fix
+            org.opencontainers.image.description=Godot 4.3 with Android Joy-Con D-pad fix
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.date }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Build summary
+        run: |
+          echo "## Build Summary 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Godot Version:** ${{ steps.meta.outputs.godot_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Image:** \`${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ steps.meta.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** ${{ steps.meta.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pull Image" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Use in Dockerfile" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`dockerfile" >> $GITHUB_STEP_SUMMARY
+          echo "FROM ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }} AS godot-base" >> $GITHUB_STEP_SUMMARY
+          echo "COPY --from=godot-base /opt/godot /opt/godot" >> $GITHUB_STEP_SUMMARY
+          echo "COPY --from=godot-base /root/.local/share/godot /root/.local/share/godot" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Test image
+        run: |
+          echo "Testing Godot image..."
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }} /opt/godot/bin/godot.linuxbsd.editor.x86_64 --version
