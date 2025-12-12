@@ -47,8 +47,9 @@ RUN yes | sdkmanager --licenses && \
     sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;23.2.8568313" "cmake;3.22.1"
 
 # Build arguments
-ARG GODOT_BRANCH=fix-joycon-dpad-android
+ARG GODOT_BRANCH=4.3-joycon-fix
 ARG GODOT_VERSION=4.3.stable
+ARG SCONSFLAGS=verbose=yes warnings=extra werror=yes debug_symbols=no
 
 # Clone Godot source
 WORKDIR /opt
@@ -56,23 +57,37 @@ RUN git clone --depth 1 --branch ${GODOT_BRANCH} https://github.com/Nat-Ya/godot
 
 # Build Godot editor (Linux)
 WORKDIR /opt/godot
-RUN scons platform=linuxbsd tools=yes target=editor -j$(nproc) && \
+RUN scons platform=linuxbsd tools=yes target=editor ${SCONSFLAGS} -j$(nproc) && \
     strip bin/godot.linuxbsd.editor.x86_64
 
-# Build Android export templates (arm64)
-RUN scons platform=android target=template_release arch=arm64 -j$(nproc) && \
-    scons platform=android target=template_debug arch=arm64 -j$(nproc)
+# Build Android export templates (arm32 and arm64) - matching Android builds workflow
+# Build arm64 templates
+RUN scons platform=android target=template_release arch=arm64 ${SCONSFLAGS} -j$(nproc) && \
+    scons platform=android target=template_debug arch=arm64 ${SCONSFLAGS} -j$(nproc)
+
+# Build arm32 templates
+RUN scons platform=android target=template_release arch=arm32 ${SCONSFLAGS} -j$(nproc) && \
+    scons platform=android target=template_debug arch=arm32 ${SCONSFLAGS} -j$(nproc)
+
+# Generate Android export templates using Gradle (matching Android builds workflow)
+# This packages the native libraries into APKs for both arm32 and arm64
+WORKDIR /opt/godot/platform/android/java
+RUN ./gradlew generateGodotTemplates --quiet && \
+    cd /opt/godot && \
+    ls -lh bin/android_*.apk || true
 
 # Package Android export templates
+WORKDIR /opt/godot
 RUN mkdir -p /root/.local/share/godot/export_templates/${GODOT_VERSION} && \
-    cd /opt/godot/bin && \
+    cd bin && \
     mkdir -p android_source && \
     cp android_*.apk android_source/ 2>/dev/null || true && \
     cp -r misc/dist/android_source/* android_source/ 2>/dev/null || true && \
     cd android_source && \
     zip -r /root/.local/share/godot/export_templates/${GODOT_VERSION}/android_source.zip . && \
-    cp /opt/godot/bin/android_debug.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true && \
-    cp /opt/godot/bin/android_release.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true
+    cd /opt/godot/bin && \
+    cp android_debug.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true && \
+    cp android_release.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true
 
 # ============================================================================
 # Stage 2: Runtime - Clean image with Godot + templates
