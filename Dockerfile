@@ -95,20 +95,21 @@ RUN mkdir -p /root/.local/share/godot/export_templates/${GODOT_VERSION} && \
 FROM ubuntu:24.04
 
 # Install minimal runtime dependencies
+# Note: libasound2 is a virtual package in Ubuntu 24.04, use libasound2t64 instead
 RUN apt-get update && apt-get install -y \
     libx11-6 \
     libxcursor1 \
     libxinerama1 \
     libgl1 \
     libglu1-mesa \
-    libasound2 \
+    libasound2t64 \
     libpulse0 \
     openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Godot binary
 COPY --from=builder /opt/godot/bin/godot.linuxbsd.editor.x86_64 /opt/godot/bin/godot.linuxbsd.editor.x86_64
-COPY --from=builder /opt/godot/bin/android_*.apk /opt/godot/bin/ 2>/dev/null || true
+COPY --from=builder /opt/godot/bin/android_*.apk /opt/godot/bin/
 
 # Copy export templates
 COPY --from=builder /root/.local/share/godot /root/.local/share/godot
