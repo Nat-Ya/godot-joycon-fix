@@ -1,66 +1,83 @@
 # Godot Fork Tasks - Joy-Con D-pad Fix
 
-**Repository:** `godot-joycon-fix`  
-**Branch:** `4.3-joycon-fix`  
+**Repository:** `godot-joycon-fix`
+**Branch:** `4.3-joycon-fix`
 **File:** `platform/android/java/lib/src/org/godotengine/godot/input/GodotInputHandler.java`
+
+---
+
+## ✅ COMPLETED: Button Mapping Fixes
+
+### Joy-Con Screenshot Button Fix
+**Status:** Completed and committed
+**Branch:** `claude/fix-godot-screenshot-button-1ysda`
+
+**Changes Made:**
+- **Screenshot/Capture Button:** `KEYCODE_SYSTEM_NAVIGATION_UP` → Button **15** (MISC1/Nintendo Capture)
+- **L2 Trigger:** `KEYCODE_BUTTON_L2` → Button **16** (PADDLE1 slot)
+- **R2 Trigger:** `KEYCODE_BUTTON_R2` → Button **19** (PADDLE4 slot)
+
+**Rationale:**
+- Button 15 (MISC1) is the standard SDL button for screenshot/capture (Xbox Share, PS5 Microphone, Nintendo Capture)
+- L2/R2 moved to PADDLE slots to avoid conflicts with:
+  - Button 15 (needed for screenshot)
+  - Button 21 (SDL_MAX boundary marker - not a real button)
+  - Buttons 20+ (reserved for default case: `KEYCODE_BUTTON_1` onwards)
+- PADDLE slots (16, 19) are safe because Joy-Cons don't have paddle buttons
 
 ---
 
 ## Problem Summary
 
-D-pad button events are logged by native Android but never reach GDScript.  
+D-pad button events are logged by native Android but never reach GDScript.
 L button and joystick work perfectly - only D-pad buttons fail.
 
 ---
 
-# PHASE 1: DIAGNOSTIC LOGGING (verify hypothesis)
+# PHASE 1: DIAGNOSTIC LOGGING ✅ COMPLETED
 
-## Task 1: Add Logging in `onKeyDown()` (lines 199-207)
+## ✅ Task 1: Add Logging in `onKeyDown()` - COMPLETED
 
 **Goal:** Trace exactly where D-pad events diverge from L button events.
 
-**Add these logs to understand the current flow:**
-
+**Implemented Logging:**
 ```java
-// BEFORE the if check (line 199)
-Log.d(TAG, "KeyDown TRACE: deviceId=" + deviceId + " keyCode=" + keyCode + " inMap=" + (mJoystickIds.indexOfKey(deviceId) >= 0));
-
-// INSIDE the if block (after line 199, if device IS in map)
-if (mJoystickIds.indexOfKey(deviceId) >= 0) {
-    int godotJoyId = mJoystickIds.get(deviceId);
-    Log.d(TAG, "KeyDown DISPATCH: deviceId=" + deviceId + " -> godotJoyId=" + godotJoyId);
-}
+// Phase 1 diagnostic: Log device lookup attempt
+boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+Log.i(TAG, "[Phase1] KeyDown: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+    " keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
 ```
+
+This logs BEFORE the device check to capture all events, including unregistered devices.
 
 ---
 
-## Task 2: Add Logging in `onKeyUp()` (lines 159-167)
+## ✅ Task 2: Add Logging in `onKeyUp()` - COMPLETED
 
-**Same pattern as onKeyDown:**
-
+**Implemented Logging:**
 ```java
-// BEFORE the if check
-Log.d(TAG, "KeyUp TRACE: deviceId=" + deviceId + " keyCode=" + keyCode + " inMap=" + (mJoystickIds.indexOfKey(deviceId) >= 0));
-
-// INSIDE the if block
-if (mJoystickIds.indexOfKey(deviceId) >= 0) {
-    int godotJoyId = mJoystickIds.get(deviceId);
-    Log.d(TAG, "KeyUp DISPATCH: deviceId=" + deviceId + " -> godotJoyId=" + godotJoyId);
-}
+// Phase 1 diagnostic: Log device lookup attempt
+boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+Log.i(TAG, "[Phase1] KeyUp: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+    " keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
 ```
+
+Same pattern as onKeyDown for consistency.
 
 ---
 
-## Task 3: Add Logging in `handleJoystickButtonEvent()` (line 693)
+## ✅ Task 3: Add Logging in `handleJoystickButtonEvent()` - COMPLETED
 
-**Confirm the method is actually called:**
-
+**Implemented Logging:**
 ```java
 private void handleJoystickButtonEvent(int device, int button, boolean pressed) {
-    Log.d(TAG, "handleJoystickButtonEvent: device=" + device + " button=" + button + " pressed=" + pressed);
+    // Phase 1 diagnostic: Confirm method is called
+    Log.i(TAG, "[Phase1] handleJoystickButtonEvent: device=" + device + " button=" + button + " pressed=" + pressed);
     // ... rest of method
 }
 ```
+
+This confirms whether the method is reached for both working (L button) and broken (D-pad) inputs.
 
 ---
 

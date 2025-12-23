@@ -156,7 +156,12 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		if (isKeyEventGameDevice(source)) {
 			// Check if the device exists
 			final int deviceId = event.getDeviceId();
-			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
+			// Phase 1 diagnostic: Log device lookup attempt
+			boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+			Log.i(TAG, "[Phase1] KeyUp: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+				" keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
+
+			if (deviceExists) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
 				Log.i(TAG, "KeyUp dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
@@ -190,10 +195,15 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		final int deviceId = event.getDeviceId();
 		// Check if source is a game device and that the device is a registered gamepad
 		if (isKeyEventGameDevice(source)) {
+			// Phase 1 diagnostic: Log device lookup attempt
+			boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+			Log.i(TAG, "[Phase1] KeyDown: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+				" keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
+
 			if (event.getRepeatCount() > 0) // ignore key echo
 				return true;
 
-			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
+			if (deviceExists) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
 				Log.i(TAG, "KeyDown dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
@@ -686,6 +696,9 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 	}
 
 	private void handleJoystickButtonEvent(int device, int button, boolean pressed) {
+		// Phase 1 diagnostic: Confirm method is called
+		Log.i(TAG, "[Phase1] handleJoystickButtonEvent: device=" + device + " button=" + button + " pressed=" + pressed);
+
 		if (shouldDispatchInputToRenderThread()) {
 			mRenderView.queueOnRenderThread(() -> GodotLib.joybutton(device, button, pressed));
 		} else {
