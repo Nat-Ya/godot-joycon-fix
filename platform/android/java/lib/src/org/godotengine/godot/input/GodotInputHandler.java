@@ -420,13 +420,13 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 				button = 9;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_L2:
-				button = 15;
+				button = 16; // PADDLE1 - Avoids conflicts with MISC1 and default case mapping
 				break;
 			case KeyEvent.KEYCODE_BUTTON_R1:
 				button = 10;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_R2:
-				button = 16;
+				button = 19; // PADDLE4 - Avoids conflicts with default case mapping
 				break;
 			case KeyEvent.KEYCODE_BUTTON_SELECT:
 				button = 4;
@@ -451,6 +451,9 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 				break;
 			case KeyEvent.KEYCODE_DPAD_RIGHT:
 				button = 14;
+				break;
+			case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP: // Joy-Con Capture/Screenshot button
+				button = 15;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_C:
 				button = 17;
