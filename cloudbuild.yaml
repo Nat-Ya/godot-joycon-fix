@@ -10,7 +10,9 @@ options:
 
 substitutions:
   _GODOT_VERSION: '4.3.stable'
-  _IMAGE_TAG: '${BRANCH_NAME}'
+  _BRANCH_NAME: '4.3-joycon-fix'
+  _SHORT_SHA: 'latest'
+  _IMAGE_TAG: '${_BRANCH_NAME}'
   _ARTIFACT_REGISTRY: 'europe-west1-docker.pkg.dev/general-476320/android-build-images'
 
 steps:
@@ -21,11 +23,11 @@ steps:
       - '-t'
       - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}'
       - '-t'
-      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${SHORT_SHA}'
+      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_SHORT_SHA}'
       - '-t'
       - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:latest'
       - '--build-arg'
-      - 'GODOT_BRANCH=${BRANCH_NAME}'
+      - 'GODOT_BRANCH=${_BRANCH_NAME}'
       - '--build-arg'
       - 'GODOT_VERSION=${_GODOT_VERSION}'
       - '--build-arg'
@@ -66,25 +68,25 @@ steps:
     args:
       - 'cp'
       - 'android_debug.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${BRANCH_NAME}/${SHORT_SHA}/android_debug.apk'
+      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}/android_debug.apk'
     id: 'upload-debug-apk'
 
   - name: 'gcr.io/cloud-builders/gsutil'
     args:
       - 'cp'
       - 'android_release.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${BRANCH_NAME}/${SHORT_SHA}/android_release.apk'
+      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}/android_release.apk'
     id: 'upload-release-apk'
 
 # Store APKs as build artifacts (downloadable from Cloud Build UI)
 artifacts:
   objects:
-    location: 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${BRANCH_NAME}/${SHORT_SHA}'
+    location: 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}'
     paths:
       - 'android_debug.apk'
       - 'android_release.apk'
 
 images:
   - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}'
-  - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${SHORT_SHA}'
+  - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_SHORT_SHA}'
   - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:latest'
