@@ -121,32 +121,6 @@ jobs:
             sleep 30
           done
 
-      - name: Download build artifacts
-        if: steps.status.outputs.status == 'SUCCESS'
-        run: |
-          # Download APKs from GCS
-          SHORT_SHA=$(git rev-parse --short HEAD)
-
-          mkdir -p artifacts
-
-          gsutil cp \
-            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${SHORT_SHA}/android_debug.apk" \
-            artifacts/
-
-          gsutil cp \
-            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${SHORT_SHA}/android_release.apk" \
-            artifacts/
-
-          ls -lh artifacts/
-
-      - name: Upload artifacts to GitHub
-        if: steps.status.outputs.status == 'SUCCESS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-android-templates-${{ github.sha }}
-          path: artifacts/*.apk
-          retention-days: 30
-
       - name: Build summary
         if: always()
         run: |
