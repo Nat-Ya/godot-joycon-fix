@@ -23,9 +23,10 @@ on:
         default: '4.3.stable'
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ secrets.GCP_REGION }}
-  GCP_ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY }}
+  # Use secrets if available, otherwise fall back to defaults
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'general-476320' }}
+  GCP_REGION: ${{ secrets.GCP_REGION || 'europe-west1' }}
+  GCP_ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY || 'europe-west1-docker.pkg.dev/general-476320/android-build-images' }}
 
 jobs:
   cloud-build:
@@ -37,6 +38,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Validate GCP configuration
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "❌ ERROR: GCP_SA_KEY secret is not configured!"
+            echo "Please add the service account key to GitHub secrets."
+            echo "See GH_WORKFLOW.WITH_CLOUDBUILD.NEXT_STEPS.md for setup instructions."
+            exit 1
+          fi
+          echo "✅ GCP Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "✅ GCP Region: ${{ env.GCP_REGION }}"
+          echo "✅ Artifact Registry: ${{ env.GCP_ARTIFACT_REGISTRY }}"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
