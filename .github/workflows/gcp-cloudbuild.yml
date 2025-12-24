@@ -90,25 +90,36 @@ jobs:
           echo "✅ Cloud Build submitted: $BUILD_ID"
 
       - name: Wait for build completion
-        run: |
-          echo "⏳ Waiting for Cloud Build to complete..."
-          gcloud builds log --region=${{ env.GCP_REGION }} ${{ steps.build.outputs.build_id }} --stream
-
-      - name: Get build status
         id: status
         run: |
-          STATUS=$(gcloud builds describe ${{ steps.build.outputs.build_id }} \
-            --region=${{ env.GCP_REGION }} \
-            --format="value(status)")
+          echo "⏳ Waiting for Cloud Build to complete..."
+          echo "Build ID: ${{ steps.build.outputs.build_id }}"
 
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          # Poll every 30 seconds instead of streaming (less API calls)
+          while true; do
+            STATUS=$(gcloud builds describe ${{ steps.build.outputs.build_id }} \
+              --region=${{ env.GCP_REGION }} \
+              --format="value(status)")
 
-          if [ "$STATUS" != "SUCCESS" ]; then
-            echo "❌ Build failed with status: $STATUS"
-            exit 1
-          fi
+            echo "Current status: $STATUS"
 
-          echo "✅ Build succeeded!"
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ Build succeeded!"
+              echo "status=$STATUS" >> $GITHUB_OUTPUT
+              break
+            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "TIMEOUT" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Build failed with status: $STATUS"
+              echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+              # Fetch logs on failure
+              echo "Fetching build logs..."
+              gcloud builds log --region=${{ env.GCP_REGION }} ${{ steps.build.outputs.build_id }}
+              exit 1
+            fi
+
+            # Wait 30 seconds before next poll
+            sleep 30
+          done
 
       - name: Download build artifacts
         if: steps.status.outputs.status == 'SUCCESS'
