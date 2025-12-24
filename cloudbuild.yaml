@@ -68,20 +68,20 @@ steps:
     args:
       - 'cp'
       - 'android_debug.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}/android_debug.apk'
+      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}/android_debug.apk'
     id: 'upload-debug-apk'
 
   - name: 'gcr.io/cloud-builders/gsutil'
     args:
       - 'cp'
       - 'android_release.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}/android_release.apk'
+      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}/android_release.apk'
     id: 'upload-release-apk'
 
 # Store APKs as build artifacts (downloadable from Cloud Build UI)
 artifacts:
   objects:
-    location: 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_BRANCH_NAME}/${_SHORT_SHA}'
+    location: 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}'
     paths:
       - 'android_debug.apk'
       - 'android_release.apk'

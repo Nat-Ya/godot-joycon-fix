@@ -115,16 +115,15 @@ jobs:
         run: |
           # Download APKs from GCS
           SHORT_SHA=$(git rev-parse --short HEAD)
-          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
 
           mkdir -p artifacts
 
           gsutil cp \
-            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${BRANCH_NAME}/${SHORT_SHA}/android_debug.apk" \
+            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${SHORT_SHA}/android_debug.apk" \
             artifacts/
 
           gsutil cp \
-            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${BRANCH_NAME}/${SHORT_SHA}/android_release.apk" \
+            "gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${SHORT_SHA}/android_release.apk" \
             artifacts/
 
           ls -lh artifacts/
@@ -155,7 +154,7 @@ jobs:
           echo "### 📦 Download APKs" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "SHORT_SHA=\$(git rev-parse --short HEAD)" >> $GITHUB_STEP_SUMMARY
-          echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/${{ github.ref_name }}/\${SHORT_SHA}/android_debug.apk ./" >> $GITHUB_STEP_SUMMARY
+          echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/\${SHORT_SHA}/android_debug.apk ./" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
