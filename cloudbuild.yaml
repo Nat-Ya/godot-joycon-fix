@@ -8,6 +8,8 @@ options:
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
 
+serviceAccount: 'projects/general-476320/serviceAccounts/nys-godot-game-builder@general-476320.iam.gserviceaccount.com'
+
 substitutions:
   _GODOT_VERSION: '4.3.stable'
   _IMAGE_TAG: 'latest'
