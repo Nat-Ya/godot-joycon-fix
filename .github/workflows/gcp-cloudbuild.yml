@@ -79,9 +79,10 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
 
           # Submit build with all required substitutions
+          # _IMAGE_TAG is set to branch name for tagging strategy
           BUILD_ID=$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_GODOT_VERSION="$GODOT_VERSION",_BRANCH_NAME="$BRANCH_NAME",_SHORT_SHA="$SHORT_SHA" \
+            --substitutions=_GODOT_VERSION="$GODOT_VERSION",_IMAGE_TAG="$BRANCH_NAME",_BRANCH_NAME="$BRANCH_NAME",_SHORT_SHA="$SHORT_SHA" \
             --region=${{ env.GCP_REGION }} \
             --format="value(id)")
 
