@@ -48,14 +48,14 @@ steps:
       - '-c'
       - |
         # Create temporary container
-        CONTAINER_ID=$(docker create ${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG})
+        CONTAINER_ID=$$(docker create ${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG})
 
         # Extract APKs
-        docker cp $CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_debug.apk ./android_debug.apk
-        docker cp $CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_release.apk ./android_release.apk
+        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_debug.apk ./android_debug.apk
+        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_release.apk ./android_release.apk
 
         # Cleanup
-        docker rm $CONTAINER_ID
+        docker rm $$CONTAINER_ID
 
         # Verify
         ls -lh android_*.apk
