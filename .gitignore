@@ -97,6 +97,9 @@ platform/android/java/*/libs/
 *.bc
 platform/web/node_modules/
 
+# Root tooling (commitlint, husky)
+/node_modules/
+
 # Misc
 *.debug
 
