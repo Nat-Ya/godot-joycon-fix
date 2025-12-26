@@ -1094,17 +1094,21 @@ void Input::set_event_dispatch_function(EventDispatchFunc p_function) {
 
 void Input::joy_button(int p_device, JoyButton p_button, bool p_pressed) {
 	_THREAD_SAFE_METHOD_;
+	print_verbose(vformat("[Input] joy_button: device=%d button=%d pressed=%s", p_device, (int)p_button, p_pressed ? "true" : "false"));
 	Joypad &joy = joy_names[p_device];
 	ERR_FAIL_INDEX((int)p_button, (int)JoyButton::MAX);
 
 	if (joy.last_buttons[(size_t)p_button] == p_pressed) {
+		print_verbose(vformat("[Input] joy_button: SKIPPED duplicate state device=%d button=%d", p_device, (int)p_button));
 		return;
 	}
 	joy.last_buttons[(size_t)p_button] = p_pressed;
 	if (joy.mapping == -1) {
+		print_verbose(vformat("[Input] joy_button: NO MAPPING, passing through device=%d button=%d", p_device, (int)p_button));
 		_button_event(p_device, p_button, p_pressed);
 		return;
 	}
+	print_verbose(vformat("[Input] joy_button: HAS MAPPING index=%d, looking up button=%d", joy.mapping, (int)p_button));
 
 	JoyEvent map = _get_mapped_button_event(map_db[joy.mapping], p_button);
 

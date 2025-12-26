@@ -359,8 +359,13 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		joystick.device_id = deviceId;
 		joystick.name = device.getName();
 
-		//Helps with creating new joypad mappings.
+		// Capture VID/PID for Joy-Con mapping
+		int vendorId = device.getVendorId();
+		int productId = device.getProductId();
+		String guid = String.format("%08x%08x", vendorId, productId);
 		Log.i(TAG, "=== New Input Device: " + joystick.name);
+		Log.i(TAG, "    VendorID: 0x" + Integer.toHexString(vendorId) + " ProductID: 0x" + Integer.toHexString(productId));
+		Log.i(TAG, "    GUID (for mapping): " + guid);
 
 		Set<Integer> already = new HashSet<>();
 		for (InputDevice.MotionRange range : device.getMotionRanges()) {
@@ -386,6 +391,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 			//Helps with creating new joypad mappings.
 			Log.i(TAG, " - Mapping Android axis " + joystick.axes.get(idx) + " to Godot axis " + idx);
 		}
+		Log.i(TAG, "    hasAxisHat: " + joystick.hasAxisHat);
 		mJoysticksDevices.put(deviceId, joystick);
 
 		handleJoystickConnectionChangedEvent(id, true, joystick.name);
