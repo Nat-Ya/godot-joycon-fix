@@ -1,7 +1,7 @@
 name: 🐳 Build Godot Docker Image
 
 on:
-  # Manual trigger
+  # Manual trigger only (auto-build now handled by gcp-cloudbuild.yml)
   workflow_dispatch:
     inputs:
       godot_version:
@@ -17,18 +17,18 @@ on:
         required: false
         default: 'linux/amd64'
 
-  # Auto trigger on push to main branches
-  push:
-    branches:
-      - 4.3-joycon-fix
-      - main
-    paths:
-      - '**/*.cpp'
-      - '**/*.h'
-      - 'SConstruct'
-      - 'platform/android/**'
-      - '.github/workflows/docker-build.yml'
-      - 'Dockerfile'
+  # Auto trigger disabled - using GCP Cloud Build instead
+  # push:
+  #   branches:
+  #     - 4.3-joycon-fix
+  #     - main
+  #   paths:
+  #     - '**/*.cpp'
+  #     - '**/*.h'
+  #     - 'SConstruct'
+  #     - 'platform/android/**'
+  #     - '.github/workflows/docker-build.yml'
+  #     - 'Dockerfile'
 
 # Global Settings
 env:
