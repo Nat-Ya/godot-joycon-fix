@@ -469,6 +469,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 				button = 14;
 				break;
 			case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP: // Joy-Con Capture/Screenshot button
+			case KeyEvent.KEYCODE_SYSRQ: // Some Joy-Cons emit SYSRQ for Capture
 				button = 15;
 				break;
 			case KeyEvent.KEYCODE_BUTTON_C:
