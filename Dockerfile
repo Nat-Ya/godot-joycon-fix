@@ -1,5 +1,6 @@
-# Godot Engine with Joy-Con Fix - Docker Image
+# Godot Engine with Joy-Con Fix - Docker Image (Development Build)
 # Multi-stage build for Godot editor + Android export templates
+# Uses local source code - run 'docker build' from repository root
 
 FROM ubuntu:24.04 AS builder
 
@@ -47,16 +48,14 @@ RUN yes | sdkmanager --licenses && \
     sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;23.2.8568313" "cmake;3.22.1"
 
 # Build arguments
-ARG GODOT_BRANCH=4.3-joycon-fix
 ARG GODOT_VERSION=4.3.stable
 ARG SCONSFLAGS=verbose=yes warnings=extra werror=yes debug_symbols=no
 
-# Clone Godot source
-WORKDIR /opt
-RUN git clone --depth 1 --branch ${GODOT_BRANCH} https://github.com/Nat-Ya/godot-joycon-fix.git godot
+# Copy local Godot source code
+WORKDIR /opt/godot
+COPY . /opt/godot
 
 # Build Godot editor (Linux)
-WORKDIR /opt/godot
 RUN scons platform=linuxbsd tools=yes target=editor ${SCONSFLAGS} -j$(nproc) && \
     strip bin/godot.linuxbsd.editor.x86_64
 
