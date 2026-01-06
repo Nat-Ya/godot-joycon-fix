@@ -704,15 +704,15 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 		}
 	}
 
-	Ref<InputEventJoypadButton> jb = p_event;
+	Ref<InputEventJoypadButton> jb_button = p_event;
 
-	if (jb.is_valid()) {
-		print_verbose(vformat("[Input::_parse_input_event_impl] processing joy button device=%d button=%d pressed=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false"));
-		JoyButton c = _combine_device(jb->get_button_index(), jb->get_device());
+	if (jb_button.is_valid()) {
+		print_verbose(vformat("[Input::_parse_input_event_impl] processing joy button device=%d button=%d pressed=%s", jb_button->get_device(), (int)jb_button->get_button_index(), jb_button->is_pressed() ? "true" : "false"));
+		JoyButton c = _combine_device(jb_button->get_button_index(), jb_button->get_device());
 
-		if (jb->is_pressed()) {
+		if (jb_button->is_pressed()) {
 			joy_buttons_pressed.insert(c);
-			print_verbose(vformat("[Input::_parse_input_event_impl] inserted device=%d button=%d combined=%d", jb->get_device(), (int)jb->get_button_index(), (int)c));
+			print_verbose(vformat("[Input::_parse_input_event_impl] inserted device=%d button=%d combined=%d", jb_button->get_device(), (int)jb_button->get_button_index(), (int)c));
 		} else {
 			joy_buttons_pressed.erase(c);
 		}
@@ -1462,11 +1462,6 @@ void Input::parse_mapping(const String &p_mapping) {
 	_THREAD_SAFE_METHOD_;
 	JoyDeviceMapping mapping;
 
-
-	Ref<InputEventJoypadButton> jb_check = p_event;
-	if (jb_check.is_valid()) {
-		print_verbose(vformat("[Input::parse_input_event] button=%d use_accumulated=%s agile=%s", (int)jb_check->get_button_index(), use_accumulated_input ? "true" : "false", agile_input_event_flushing ? "true" : "false"));
-	}
 	Vector<String> entry = p_mapping.split(",");
 	if (entry.size() < 2) {
 		return;
