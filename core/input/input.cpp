@@ -770,6 +770,10 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 	}
 
 	if (event_dispatch_function) {
+		Ref<InputEventJoypadButton> jb = p_event;
+		if (jb.is_valid()) {
+			print_verbose(vformat("[Input] Dispatching joypad button event: device=%d button=%d pressed=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false"));
+		}
 		_THREAD_SAFE_UNLOCK_
 		event_dispatch_function(p_event);
 		_THREAD_SAFE_LOCK_
