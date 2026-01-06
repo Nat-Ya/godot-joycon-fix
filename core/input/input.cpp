@@ -1095,6 +1095,7 @@ void Input::release_pressed_events() {
 }
 
 void Input::set_event_dispatch_function(EventDispatchFunc p_function) {
+	print_verbose("[Input] set_event_dispatch_function called");
 	event_dispatch_function = p_function;
 }
 

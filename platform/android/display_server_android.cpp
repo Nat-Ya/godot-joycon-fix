@@ -348,6 +348,10 @@ void DisplayServerAndroid::send_input_text(const String &p_text) const {
 }
 
 void DisplayServerAndroid::_dispatch_input_events(const Ref<InputEvent> &p_event) {
+	Ref<InputEventJoypadButton> jb = p_event;
+	if (jb.is_valid()) {
+		print_verbose(vformat("[DSAndroid] dispatch joy button device=%d button=%d pressed=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false"));
+	}
 	DisplayServerAndroid::get_singleton()->send_input_event(p_event);
 }
 

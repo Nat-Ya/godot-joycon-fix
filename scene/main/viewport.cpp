@@ -3297,6 +3297,10 @@ void Viewport::push_unhandled_input(const Ref<InputEvent> &p_event, bool p_local
 #endif // DISABLE_DEPRECATED
 
 void Viewport::_push_unhandled_input_internal(const Ref<InputEvent> &p_event) {
+	Ref<InputEventJoypadButton> jb = p_event;
+	if (jb.is_valid()) {
+		print_verbose(vformat("[Viewport] unhandled input joy button device=%d button=%d pressed=%s handled=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false", is_input_handled() ? "true" : "false"));
+	}
 	// Shortcut Input.
 	if (Object::cast_to<InputEventKey>(*p_event) != nullptr || Object::cast_to<InputEventShortcut>(*p_event) != nullptr || Object::cast_to<InputEventJoypadButton>(*p_event) != nullptr) {
 		ERR_FAIL_COND(!is_inside_tree());
