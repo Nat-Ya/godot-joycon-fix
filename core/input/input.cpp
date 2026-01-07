@@ -1444,11 +1444,15 @@ void Input::_get_mapped_hat_events(const JoyDeviceMapping &mapping, HatDir p_hat
 }
 
 JoyButton Input::_get_output_button(const String &output) {
+	print_verbose(vformat("[Input::_get_output_button] looking for output string='%s'", output));
 	for (int i = 0; i < (int)JoyButton::SDL_MAX; i++) {
+		print_verbose(vformat("[Input::_get_output_button] comparing to _joy_buttons[%d]='%s'", i, _joy_buttons[i]));
 		if (output == _joy_buttons[i]) {
+			print_verbose(vformat("[Input::_get_output_button] MATCH! returning button=%d", i));
 			return JoyButton(i);
 		}
 	}
+	print_verbose(vformat("[Input::_get_output_button] NO MATCH found for '%s', returning INVALID", output));
 	return JoyButton::INVALID;
 }
 
