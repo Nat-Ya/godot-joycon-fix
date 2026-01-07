@@ -1129,6 +1129,14 @@ void Input::joy_button(int p_device, JoyButton p_button, bool p_pressed) {
 	if (map.type == TYPE_AXIS) {
 		print_verbose(vformat("[Input] joy_button: calling _axis_event with mapped index=%d", map.index));
 		_axis_event(p_device, (JoyAxis)map.index, p_pressed ? map.value : 0.0);
+		return;
+	}
+
+	// Fallback: if mapping failed (TYPE_MAX) or produced HAT for D-pad, emit the original button.
+	if (p_button >= JoyButton::DPAD_UP && p_button <= JoyButton::DPAD_RIGHT) {
+		print_verbose(vformat("[Input] joy_button: fallback dispatch for dpad button=%d (map.type=%d)", (int)p_button, map.type));
+		_button_event(p_device, p_button, p_pressed);
+		return;
 	}
 	// no event?
 }
