@@ -1118,13 +1118,16 @@ void Input::joy_button(int p_device, JoyButton p_button, bool p_pressed) {
 	print_verbose(vformat("[Input] joy_button: HAS MAPPING index=%d, looking up button=%d", joy.mapping, (int)p_button));
 
 	JoyEvent map = _get_mapped_button_event(map_db[joy.mapping], p_button);
+	print_verbose(vformat("[Input] joy_button: mapped button=%d to type=%d index=%d", (int)p_button, map.type, map.index));
 
 	if (map.type == TYPE_BUTTON) {
+		print_verbose(vformat("[Input] joy_button: calling _button_event with mapped index=%d", map.index));
 		_button_event(p_device, (JoyButton)map.index, p_pressed);
 		return;
 	}
 
 	if (map.type == TYPE_AXIS) {
+		print_verbose(vformat("[Input] joy_button: calling _axis_event with mapped index=%d", map.index));
 		_axis_event(p_device, (JoyAxis)map.index, p_pressed ? map.value : 0.0);
 	}
 	// no event?
