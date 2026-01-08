@@ -362,7 +362,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		// Capture VID/PID for Joy-Con mapping
 		int vendorId = device.getVendorId();
 		int productId = device.getProductId();
-		String guid = String.format("%08x%08x", vendorId, productId);
+		String guid = String.format("Android%08x%08x", vendorId, productId);
 		Log.i(TAG, "=== New Input Device: " + joystick.name);
 		Log.i(TAG, "    VendorID: 0x" + Integer.toHexString(vendorId) + " ProductID: 0x" + Integer.toHexString(productId));
 		Log.i(TAG, "    GUID (for mapping): " + guid);
