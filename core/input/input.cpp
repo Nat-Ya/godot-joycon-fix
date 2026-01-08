@@ -1289,12 +1289,12 @@ void Input::_update_action_cache(const StringName &p_action_name, ActionState &r
 
 Input::JoyEvent Input::_get_mapped_button_event(const JoyDeviceMapping &mapping, JoyButton p_button) {
 	JoyEvent event;
-	print_verbose(vformat("[_get_mapped_button_event] Searching for button=%d in mapping with %d bindings", (int)p_button, mapping.bindings.size()));
+	print_line(vformat("[_get_mapped_button_event] Searching for button=%d in mapping with %d bindings", (int)p_button, mapping.bindings.size()));
 
 	for (int i = 0; i < mapping.bindings.size(); i++) {
 		const JoyBinding binding = mapping.bindings[i];
 		if (binding.inputType == TYPE_BUTTON) {
-			print_verbose(vformat("[_get_mapped_button_event]   Binding[%d]: inputType=BUTTON input.button=%d", i, (int)binding.input.button));
+			print_line(vformat("[_get_mapped_button_event]   Binding[%d]: inputType=BUTTON input.button=%d", i, (int)binding.input.button));
 		}
 		if (binding.inputType == TYPE_BUTTON && binding.input.button == p_button) {
 			event.type = binding.outputType;
@@ -1529,10 +1529,10 @@ void Input::parse_mapping(const String &p_mapping) {
 		JoyButton output_button = _get_output_button(output);
 		JoyAxis output_axis = _get_output_axis(output);
 		if (output_button == JoyButton::INVALID && output_axis == JoyAxis::INVALID) {
-			print_verbose(vformat("[Parser] SKIPPING unrecognized output string \"%s\" in mapping:\n%s", output, p_mapping));
+			print_line(vformat("[Parser] SKIPPING unrecognized output string \"%s\" in mapping:\n%s", output, p_mapping));
 			continue;
 		}
-		print_verbose(vformat("[Parser] Found output: output_button=%d output_axis=%d", (int)output_button, (int)output_axis));
+		print_line(vformat("[Parser] Found output: output_button=%d output_axis=%d", (int)output_button, (int)output_axis));
 		ERR_CONTINUE_MSG(output_button != JoyButton::INVALID && output_axis != JoyAxis::INVALID,
 				vformat("Output string \"%s\" matched both button and axis in mapping:\n%s", output, p_mapping));
 
@@ -1550,7 +1550,7 @@ void Input::parse_mapping(const String &p_mapping) {
 			case 'b':
 				binding.inputType = TYPE_BUTTON;
 				binding.input.button = (JoyButton)input.substr(1).to_int();
-				print_verbose(vformat("[Parser] Created button binding: %s <- b%d", output, (int)binding.input.button));
+				print_line(vformat("[Parser] Created button binding: %s <- b%d", output, (int)binding.input.button));
 				break;
 			case 'a':
 				binding.inputType = TYPE_AXIS;
