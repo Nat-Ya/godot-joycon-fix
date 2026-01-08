@@ -1289,9 +1289,13 @@ void Input::_update_action_cache(const StringName &p_action_name, ActionState &r
 
 Input::JoyEvent Input::_get_mapped_button_event(const JoyDeviceMapping &mapping, JoyButton p_button) {
 	JoyEvent event;
+	print_verbose(vformat("[_get_mapped_button_event] Searching for button=%d in mapping with %d bindings", (int)p_button, mapping.bindings.size()));
 
 	for (int i = 0; i < mapping.bindings.size(); i++) {
 		const JoyBinding binding = mapping.bindings[i];
+		if (binding.inputType == TYPE_BUTTON) {
+			print_verbose(vformat("[_get_mapped_button_event]   Binding[%d]: inputType=BUTTON input.button=%d", i, (int)binding.input.button));
+		}
 		if (binding.inputType == TYPE_BUTTON && binding.input.button == p_button) {
 			event.type = binding.outputType;
 			switch (binding.outputType) {
@@ -1545,6 +1549,7 @@ void Input::parse_mapping(const String &p_mapping) {
 			case 'b':
 				binding.inputType = TYPE_BUTTON;
 				binding.input.button = (JoyButton)input.substr(1).to_int();
+				print_verbose(vformat("[Parser] Created button binding: %s <- b%d", output, (int)binding.input.button));
 				break;
 			case 'a':
 				binding.inputType = TYPE_AXIS;
