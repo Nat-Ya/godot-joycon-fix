@@ -492,6 +492,41 @@ void Input::joy_connection_changed(int p_idx, bool p_connected, const String &p_
 			if (js.uid == map_db[i].uid) {
 				mapping = i;
 				js.name = map_db[i].name;
+				print_line(vformat("[joy_connection_changed] matched mapping index=%d uid=%s name=%s bindings=%d", i, map_db[i].uid, map_db[i].name, map_db[i].bindings.size()));
+				for (int b = 0; b < map_db[i].bindings.size(); b++) {
+					const JoyBinding &binding = map_db[i].bindings[b];
+					String in_desc;
+					switch (binding.inputType) {
+						case TYPE_BUTTON:
+							in_desc = vformat("b%d", (int)binding.input.button);
+							break;
+						case TYPE_AXIS:
+							in_desc = vformat("a%d", (int)binding.input.axis.axis);
+							break;
+						case TYPE_HAT:
+							in_desc = vformat("h%d.%d", (int)binding.input.hat.hat, (int)binding.input.hat.hat_mask);
+							break;
+						default:
+							in_desc = "?";
+							break;
+					}
+					String out_desc;
+					switch (binding.outputType) {
+						case TYPE_BUTTON:
+							out_desc = vformat("b%d", (int)binding.output.button);
+							break;
+						case TYPE_AXIS:
+							out_desc = vformat("a%d", (int)binding.output.axis.axis);
+							break;
+						case TYPE_HAT:
+							out_desc = vformat("h%d", (int)binding.output.button);
+							break;
+						default:
+							out_desc = "?";
+							break;
+					}
+					print_line(vformat("[joy_connection_changed]   binding[%d]: inputType=%d input=%s -> outputType=%d output=%s", b, binding.inputType, in_desc, binding.outputType, out_desc));
+				}
 			}
 		}
 		js.mapping = mapping;

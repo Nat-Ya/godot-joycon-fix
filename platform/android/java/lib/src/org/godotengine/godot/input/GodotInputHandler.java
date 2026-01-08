@@ -394,7 +394,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		Log.i(TAG, "    hasAxisHat: " + joystick.hasAxisHat);
 		mJoysticksDevices.put(deviceId, joystick);
 
-		handleJoystickConnectionChangedEvent(id, true, joystick.name);
+		handleJoystickConnectionChangedEvent(id, true, joystick.name, guid);
 	}
 
 	@Override
@@ -408,7 +408,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		final int godotJoyId = mJoystickIds.get(deviceId);
 		mJoystickIds.delete(deviceId);
 		mJoysticksDevices.delete(deviceId);
-		handleJoystickConnectionChangedEvent(godotJoyId, false, "");
+		handleJoystickConnectionChangedEvent(godotJoyId, false, "", "");
 	}
 
 	@Override
@@ -730,11 +730,11 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		}
 	}
 
-	private void handleJoystickConnectionChangedEvent(int device, boolean connected, String name) {
+	private void handleJoystickConnectionChangedEvent(int device, boolean connected, String name, String guid) {
 		if (shouldDispatchInputToRenderThread()) {
-			mRenderView.queueOnRenderThread(() -> GodotLib.joyconnectionchanged(device, connected, name));
+			mRenderView.queueOnRenderThread(() -> GodotLib.joyconnectionchanged(device, connected, name, guid));
 		} else {
-			GodotLib.joyconnectionchanged(device, connected, name);
+			GodotLib.joyconnectionchanged(device, connected, name, guid);
 		}
 	}
 
