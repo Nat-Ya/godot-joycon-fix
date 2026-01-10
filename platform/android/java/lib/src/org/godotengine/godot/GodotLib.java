@@ -162,7 +162,7 @@ public class GodotLib {
 	/**
 	 * Forward joystick devices hat motion events.
 	 */
-	public static native void joyconnectionchanged(int p_device, boolean p_connected, String p_name, String p_guid);
+	public static native void joyhat(int p_device, int p_hat_x, int p_hat_y);
 
 	/**
 	 * Fires when a joystick device is added or removed.
