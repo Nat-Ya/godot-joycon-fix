@@ -1,0 +1,147 @@
+name: 🚀 Build with Google Cloud Build
+
+on:
+  push:
+    branches:
+      - 4.3-joycon-fix
+      - main
+    paths:
+      - '**/*.cpp'
+      - '**/*.h'
+      - '**/*.java'
+      - 'SConstruct'
+      - 'platform/android/**'
+      - 'Dockerfile'
+      - 'cloudbuild.yaml'
+      - '.github/workflows/gcp-cloudbuild.yml'
+
+  workflow_dispatch:
+    inputs:
+      godot_version:
+        description: 'Godot version (e.g., 4.3.stable)'
+        required: false
+        default: '4.3.stable'
+
+env:
+  # Use secrets if available, otherwise fall back to defaults
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'general-476320' }}
+  GCP_REGION: ${{ secrets.GCP_REGION || 'europe-west1' }}
+  GCP_ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY || 'europe-west1-docker.pkg.dev/general-476320/android-build-images' }}
+
+jobs:
+  cloud-build:
+    name: Build on GCP Cloud Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate GCP configuration
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "❌ ERROR: GCP_SA_KEY secret is not configured!"
+            echo "Please add the service account key to GitHub secrets."
+            echo "See GH_WORKFLOW.WITH_CLOUDBUILD.NEXT_STEPS.md for setup instructions."
+            exit 1
+          fi
+          echo "✅ GCP Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "✅ GCP Region: ${{ env.GCP_REGION }}"
+          echo "✅ Artifact Registry: ${{ env.GCP_ARTIFACT_REGISTRY }}"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Submit build to Cloud Build
+        id: build
+        run: |
+          # Determine Godot version
+          GODOT_VERSION="${{ github.event.inputs.godot_version }}"
+          if [ -z "$GODOT_VERSION" ]; then
+            GODOT_VERSION="4.3.stable"
+          fi
+
+          # Get branch name and short SHA
+          BRANCH_NAME="${{ github.ref_name }}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          # Submit build with all required substitutions
+          # _IMAGE_TAG is set to branch name for tagging strategy
+          BUILD_ID=$(gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=_GODOT_VERSION="$GODOT_VERSION",_IMAGE_TAG="$BRANCH_NAME",_BRANCH_NAME="$BRANCH_NAME",_SHORT_SHA="$SHORT_SHA" \
+            --region=${{ env.GCP_REGION }} \
+            --format="value(id)")
+
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "✅ Cloud Build submitted: $BUILD_ID"
+
+      - name: Wait for build completion
+        id: status
+        run: |
+          echo "⏳ Waiting for Cloud Build to complete..."
+          echo "Build ID: ${{ steps.build.outputs.build_id }}"
+
+          # Poll every 30 seconds instead of streaming (less API calls)
+          while true; do
+            STATUS=$(gcloud builds describe ${{ steps.build.outputs.build_id }} \
+              --region=${{ env.GCP_REGION }} \
+              --format="value(status)")
+
+            echo "Current status: $STATUS"
+
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ Build succeeded!"
+              echo "status=$STATUS" >> $GITHUB_OUTPUT
+              break
+            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "TIMEOUT" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Build failed with status: $STATUS"
+              echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+              # Fetch logs on failure
+              echo "Fetching build logs..."
+              gcloud builds log --region=${{ env.GCP_REGION }} ${{ steps.build.outputs.build_id }}
+              exit 1
+            fi
+
+            # Wait 30 seconds before next poll
+            sleep 30
+          done
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "## 🚀 GCP Cloud Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build ID:** \`${{ steps.build.outputs.build_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** \`${{ steps.status.outputs.status }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`$(git rev-parse --short HEAD)\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Pull Docker Image" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.GCP_ARTIFACT_REGISTRY }}/godot-joycon-fix:${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Download APKs" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "SHORT_SHA=\$(git rev-parse --short HEAD)" >> $GITHUB_STEP_SUMMARY
+          echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/\${SHORT_SHA}/android_debug.apk ./" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Cloud Build Console](https://console.cloud.google.com/cloud-build/builds;region=${{ env.GCP_REGION }}/${{ steps.build.outputs.build_id }}?project=${{ env.GCP_PROJECT_ID }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Artifact Registry](https://console.cloud.google.com/artifacts/docker/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_REGION }}/android-build-images/godot-joycon-fix?project=${{ env.GCP_PROJECT_ID }})" >> $GITHUB_STEP_SUMMARY
