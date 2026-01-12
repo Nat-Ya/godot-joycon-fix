@@ -1,0 +1,16 @@
+{
+  "name": "godot-joycon-fix-tooling",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tooling for commit linting and hooks (no runtime code).",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "husky",
+    "lint:commits": "commitlint --from=HEAD~1 --to=HEAD"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "husky": "^9.0.11"
+  }
+}
