@@ -1,7 +1,7 @@
 # Google Cloud Build configuration for Godot with Joy-Con fixes
 # Builds Godot editor and Android export templates
 
-timeout: 7200s  # 2 hours (Godot builds are slow)
+timeout: 14400s  # 4 hours (Godot builds are slow, especially on E2_STANDARD_2 with 2 vCPUs)
 
 options:
   machineType: 'E2_STANDARD_2'  # 2 vCPUs, free tier eligible

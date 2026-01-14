@@ -203,7 +203,7 @@ gcloud builds log $BUILD_ID --region=europe-west1 --stream
 https://console.cloud.google.com/cloud-build/builds?region=europe-west1&project=general-476320
 ```
 
-**Expected build time:** 60-120 minutes with E2_STANDARD_2 (first build is slowest)
+**Expected build time:** 2-3+ hours with E2_STANDARD_2 (first build without cache is slowest)
 
 ---
 
@@ -289,12 +289,14 @@ gsutil mb -p general-476320 -l europe-west1 gs://general-476320_cloudbuild/
 - Verify all 4 secrets are added
 - Secret names are case-sensitive!
 
-### Issue: Build timeout (>2 hours)
+### Issue: Build timeout (>4 hours)
 
 **Solution:** Increase timeout in `cloudbuild.yaml`:
 ```yaml
-timeout: 10800s  # 3 hours
+timeout: 21600s  # 6 hours
 ```
+
+> **Note:** E2_STANDARD_2 builds are slower. First builds without cache may take 3-4 hours.
 
 ---
 
@@ -313,7 +315,7 @@ git commit -m "fix: your changes"
 # 3. Push to trigger auto-build
 git push origin 4.3-joycon-fix
 
-# 4. Wait for build (30-60 min)
+# 4. Wait for build (2-3+ hours on E2_STANDARD_2)
 gh run watch
 
 # 5. Download APK when done

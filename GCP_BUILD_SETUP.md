@@ -89,8 +89,10 @@ See `cloudbuild.yaml` for build steps:
 
 - **Machine Type:** E2_STANDARD_2 (2 vCPUs, free tier eligible)
 - **Disk Size:** 100GB
-- **Timeout:** 2 hours
+- **Timeout:** 4 hours (extended for limited CPU resources)
 - **Cost:** Free tier (120 build-minutes/day free for E2_STANDARD_2)
+
+> **Note:** Builds on E2_STANDARD_2 take longer than on higher-tier machines due to limited CPU. Expect 2-3+ hours for a full build with Android export templates. The 4-hour timeout provides headroom for first-time builds without cache.
 
 ## Monitoring
 
@@ -134,10 +136,12 @@ options:
 
 ### Build Timeout
 
-Increase timeout in `cloudbuild.yaml`:
+If builds exceed 4 hours, increase timeout in `cloudbuild.yaml`:
 ```yaml
-timeout: 10800s  # 3 hours
+timeout: 21600s  # 6 hours
 ```
+
+> **Note:** With E2_STANDARD_2 (2 vCPUs), full Godot builds with Android templates can take 2-4 hours depending on cache state.
 
 ## Local Testing
 
