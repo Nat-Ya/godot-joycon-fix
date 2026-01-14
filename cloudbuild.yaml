@@ -4,7 +4,7 @@
 timeout: 7200s  # 2 hours (Godot builds are slow)
 
 options:
-  machineType: 'E2_HIGHCPU_8'  # 8 vCPUs, better for compilation
+  machineType: 'E2_STANDARD_2'  # 2 vCPUs, free tier eligible
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
 
