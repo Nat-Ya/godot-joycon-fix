@@ -4,7 +4,7 @@
 timeout: 14400s  # 4 hours (Godot builds are slow on default machine with 1 vCPU)
 
 options:
-  # Using default machine type (1 vCPU, 4 GB RAM) - free tier eligible
+  # Using Cloud Build's default machine type (1 vCPU, 4 GB RAM at time of writing) - free tier eligible
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
 
