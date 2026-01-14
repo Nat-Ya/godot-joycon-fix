@@ -203,7 +203,7 @@ gcloud builds log $BUILD_ID --region=europe-west1 --stream
 https://console.cloud.google.com/cloud-build/builds?region=europe-west1&project=general-476320
 ```
 
-**Expected build time:** 30-60 minutes (first build is slowest)
+**Expected build time:** 60-120 minutes with E2_STANDARD_2 (first build is slowest)
 
 ---
 
@@ -351,8 +351,8 @@ git push origin 4.3-joycon-fix
 gcloud builds list --region=europe-west1 --limit=20 --format="table(id,createTime,duration,status)"
 
 # Estimate costs
-# - E2_HIGHCPU_8: ~$0.08/minute
-# - 60 min build = ~$4.80
+# - E2_STANDARD_2: Free tier (120 build-minutes/day free)
+# - Builds beyond free tier: ~$0.003/minute
 # - Storage: ~$0.02/GB/month
 # - Artifact Registry: ~$0.10/GB/month
 ```

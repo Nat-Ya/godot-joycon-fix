@@ -87,10 +87,10 @@ See `cloudbuild.yaml` for build steps:
 
 ## Build Resources
 
-- **Machine Type:** E2_HIGHCPU_8 (8 vCPUs)
+- **Machine Type:** E2_STANDARD_2 (2 vCPUs, free tier eligible)
 - **Disk Size:** 100GB
 - **Timeout:** 2 hours
-- **Cost:** ~$0.08/minute (build typically takes 30-60 minutes)
+- **Cost:** Free tier (120 build-minutes/day free for E2_STANDARD_2)
 
 ## Monitoring
 
