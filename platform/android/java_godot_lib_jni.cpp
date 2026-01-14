@@ -347,7 +347,9 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_pan(JNIEnv *env, jcla
 
 // Called on the UI thread
 JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_joybutton(JNIEnv *env, jclass clazz, jint p_device, jint p_button, jboolean p_pressed) {
+	print_verbose(vformat("[JNI] joybutton: device=%d button=%d pressed=%d", p_device, p_button, (int)p_pressed));
 	if (step.get() <= STEP_SETUP) {
+		print_verbose("[JNI] joybutton: skipped (step <= STEP_SETUP)");
 		return;
 	}
 

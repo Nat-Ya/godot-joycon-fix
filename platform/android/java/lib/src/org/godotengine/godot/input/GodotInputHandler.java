@@ -156,9 +156,15 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		if (isKeyEventGameDevice(source)) {
 			// Check if the device exists
 			final int deviceId = event.getDeviceId();
-			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
+			// Phase 1 diagnostic: Log device lookup attempt
+			boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+			Log.i(TAG, "[Phase1] KeyUp: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+				" keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
+
+			if (deviceExists) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
+				Log.i(TAG, "KeyUp dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
 				handleJoystickButtonEvent(godotJoyId, button, false);
 			}
 		} else {
@@ -189,12 +195,18 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		final int deviceId = event.getDeviceId();
 		// Check if source is a game device and that the device is a registered gamepad
 		if (isKeyEventGameDevice(source)) {
+			// Phase 1 diagnostic: Log device lookup attempt
+			boolean deviceExists = mJoystickIds.indexOfKey(deviceId) >= 0;
+			Log.i(TAG, "[Phase1] KeyDown: dev=" + deviceId + " src=0x" + Integer.toHexString(source) +
+				" keyCode=" + keyCode + " deviceRegistered=" + deviceExists);
+
 			if (event.getRepeatCount() > 0) // ignore key echo
 				return true;
 
-			if (mJoystickIds.indexOfKey(deviceId) >= 0) {
+			if (deviceExists) {
 				final int button = getGodotButton(keyCode);
 				final int godotJoyId = mJoystickIds.get(deviceId);
+				Log.i(TAG, "KeyDown dev=" + deviceId + " src=0x" + Integer.toHexString(source) + " keyCode=" + keyCode + " godotBtn=" + button);
 				handleJoystickButtonEvent(godotJoyId, button, true);
 			}
 		} else {
@@ -352,6 +364,8 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 		int productId = device.getProductId();
 		String guid = String.format("Android%08x%08x", vendorId, productId);
 		Log.i(TAG, "=== New Input Device: " + joystick.name);
+		Log.i(TAG, "    VendorID: 0x" + Integer.toHexString(vendorId) + " ProductID: 0x" + Integer.toHexString(productId));
+		Log.i(TAG, "    GUID (for mapping): " + guid);
 
 		Set<Integer> already = new HashSet<>();
 		for (InputDevice.MotionRange range : device.getMotionRanges()) {
@@ -377,6 +391,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 			//Helps with creating new joypad mappings.
 			Log.i(TAG, " - Mapping Android axis " + joystick.axes.get(idx) + " to Godot axis " + idx);
 		}
+		Log.i(TAG, "    hasAxisHat: " + joystick.hasAxisHat);
 		mJoysticksDevices.put(deviceId, joystick);
 
 		handleJoystickConnectionChangedEvent(id, true, joystick.name, guid);
@@ -689,6 +704,9 @@ public class GodotInputHandler implements InputManager.InputDeviceListener {
 	}
 
 	private void handleJoystickButtonEvent(int device, int button, boolean pressed) {
+		// Phase 1 diagnostic: Confirm method is called
+		Log.i(TAG, "[Phase1] handleJoystickButtonEvent: device=" + device + " button=" + button + " pressed=" + pressed);
+
 		if (shouldDispatchInputToRenderThread()) {
 			mRenderView.queueOnRenderThread(() -> GodotLib.joybutton(device, button, pressed));
 		} else {

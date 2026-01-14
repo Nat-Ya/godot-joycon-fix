@@ -492,6 +492,41 @@ void Input::joy_connection_changed(int p_idx, bool p_connected, const String &p_
 			if (js.uid == map_db[i].uid) {
 				mapping = i;
 				js.name = map_db[i].name;
+				print_line(vformat("[joy_connection_changed] matched mapping index=%d uid=%s name=%s bindings=%d", i, map_db[i].uid, map_db[i].name, map_db[i].bindings.size()));
+				for (int b = 0; b < map_db[i].bindings.size(); b++) {
+					const JoyBinding &binding = map_db[i].bindings[b];
+					String in_desc;
+					switch (binding.inputType) {
+						case TYPE_BUTTON:
+							in_desc = vformat("b%d", (int)binding.input.button);
+							break;
+						case TYPE_AXIS:
+							in_desc = vformat("a%d", (int)binding.input.axis.axis);
+							break;
+						case TYPE_HAT:
+							in_desc = vformat("h%d.%d", (int)binding.input.hat.hat, (int)binding.input.hat.hat_mask);
+							break;
+						default:
+							in_desc = "?";
+							break;
+					}
+					String out_desc;
+					switch (binding.outputType) {
+						case TYPE_BUTTON:
+							out_desc = vformat("b%d", (int)binding.output.button);
+							break;
+						case TYPE_AXIS:
+							out_desc = vformat("a%d", (int)binding.output.axis.axis);
+							break;
+						case TYPE_HAT:
+							out_desc = vformat("h%d", (int)binding.output.button);
+							break;
+						default:
+							out_desc = "?";
+							break;
+					}
+					print_line(vformat("[joy_connection_changed]   binding[%d]: inputType=%d input=%s -> outputType=%d output=%s", b, binding.inputType, in_desc, binding.outputType, out_desc));
+				}
 			}
 		}
 		js.mapping = mapping;
@@ -707,10 +742,12 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 	Ref<InputEventJoypadButton> jb = p_event;
 
 	if (jb.is_valid()) {
+		print_verbose(vformat("[Input::_parse_input_event_impl] processing joy button device=%d button=%d pressed=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false"));
 		JoyButton c = _combine_device(jb->get_button_index(), jb->get_device());
 
 		if (jb->is_pressed()) {
 			joy_buttons_pressed.insert(c);
+			print_verbose(vformat("[Input::_parse_input_event_impl] inserted device=%d button=%d combined=%d", jb->get_device(), (int)jb->get_button_index(), (int)c));
 		} else {
 			joy_buttons_pressed.erase(c);
 		}
@@ -770,6 +807,10 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 	}
 
 	if (event_dispatch_function) {
+		Ref<InputEventJoypadButton> jb = p_event;
+		if (jb.is_valid()) {
+			print_verbose(vformat("[Input] Dispatching joypad button event: device=%d button=%d pressed=%s", jb->get_device(), (int)jb->get_button_index(), jb->is_pressed() ? "true" : "false"));
+		}
 		_THREAD_SAFE_UNLOCK_
 		event_dispatch_function(p_event);
 		_THREAD_SAFE_LOCK_
@@ -1089,31 +1130,39 @@ void Input::release_pressed_events() {
 }
 
 void Input::set_event_dispatch_function(EventDispatchFunc p_function) {
+	print_verbose("[Input] set_event_dispatch_function called");
 	event_dispatch_function = p_function;
 }
 
 void Input::joy_button(int p_device, JoyButton p_button, bool p_pressed) {
 	_THREAD_SAFE_METHOD_;
+	print_verbose(vformat("[Input] joy_button: device=%d button=%d pressed=%s", p_device, (int)p_button, p_pressed ? "true" : "false"));
 	Joypad &joy = joy_names[p_device];
 	ERR_FAIL_INDEX((int)p_button, (int)JoyButton::MAX);
 
 	if (joy.last_buttons[(size_t)p_button] == p_pressed) {
+		print_verbose(vformat("[Input] joy_button: SKIPPED duplicate state device=%d button=%d", p_device, (int)p_button));
 		return;
 	}
 	joy.last_buttons[(size_t)p_button] = p_pressed;
 	if (joy.mapping == -1) {
+		print_verbose(vformat("[Input] joy_button: NO MAPPING, passing through device=%d button=%d", p_device, (int)p_button));
 		_button_event(p_device, p_button, p_pressed);
 		return;
 	}
+	print_verbose(vformat("[Input] joy_button: HAS MAPPING index=%d, looking up button=%d", joy.mapping, (int)p_button));
 
 	JoyEvent map = _get_mapped_button_event(map_db[joy.mapping], p_button);
+	print_verbose(vformat("[Input] joy_button: mapped button=%d to type=%d index=%d", (int)p_button, map.type, map.index));
 
 	if (map.type == TYPE_BUTTON) {
+		print_verbose(vformat("[Input] joy_button: calling _button_event with mapped index=%d", map.index));
 		_button_event(p_device, (JoyButton)map.index, p_pressed);
 		return;
 	}
 
 	if (map.type == TYPE_AXIS) {
+		print_verbose(vformat("[Input] joy_button: calling _axis_event with mapped index=%d", map.index));
 		_axis_event(p_device, (JoyAxis)map.index, p_pressed ? map.value : 0.0);
 	}
 	// no event?
@@ -1235,6 +1284,7 @@ void Input::_button_event(int p_device, JoyButton p_index, bool p_pressed) {
 	ievent->set_device(p_device);
 	ievent->set_button_index(p_index);
 	ievent->set_pressed(p_pressed);
+	print_verbose(vformat("[Input::_button_event] device=%d button=%d pressed=%s", p_device, (int)p_index, p_pressed ? "true" : "false"));
 
 	parse_input_event(ievent);
 }
@@ -1274,9 +1324,13 @@ void Input::_update_action_cache(const StringName &p_action_name, ActionState &r
 
 Input::JoyEvent Input::_get_mapped_button_event(const JoyDeviceMapping &mapping, JoyButton p_button) {
 	JoyEvent event;
+	print_line(vformat("[_get_mapped_button_event] Searching for button=%d in mapping with %d bindings", (int)p_button, mapping.bindings.size()));
 
 	for (int i = 0; i < mapping.bindings.size(); i++) {
 		const JoyBinding binding = mapping.bindings[i];
+		if (binding.inputType == TYPE_BUTTON) {
+			print_line(vformat("[_get_mapped_button_event]   Binding[%d]: inputType=BUTTON input.button=%d", i, (int)binding.input.button));
+		}
 		if (binding.inputType == TYPE_BUTTON && binding.input.button == p_button) {
 			event.type = binding.outputType;
 			switch (binding.outputType) {
@@ -1429,11 +1483,15 @@ void Input::_get_mapped_hat_events(const JoyDeviceMapping &mapping, HatDir p_hat
 }
 
 JoyButton Input::_get_output_button(const String &output) {
+	print_verbose(vformat("[Input::_get_output_button] looking for output string='%s'", output));
 	for (int i = 0; i < (int)JoyButton::SDL_MAX; i++) {
+		print_verbose(vformat("[Input::_get_output_button] comparing to _joy_buttons[%d]='%s'", i, _joy_buttons[i]));
 		if (output == _joy_buttons[i]) {
+			print_verbose(vformat("[Input::_get_output_button] MATCH! returning button=%d", i));
 			return JoyButton(i);
 		}
 	}
+	print_verbose(vformat("[Input::_get_output_button] NO MATCH found for '%s', returning INVALID", output));
 	return JoyButton::INVALID;
 }
 
@@ -1506,9 +1564,10 @@ void Input::parse_mapping(const String &p_mapping) {
 		JoyButton output_button = _get_output_button(output);
 		JoyAxis output_axis = _get_output_axis(output);
 		if (output_button == JoyButton::INVALID && output_axis == JoyAxis::INVALID) {
-			print_verbose(vformat("Unrecognized output string \"%s\" in mapping:\n%s", output, p_mapping));
+			print_line(vformat("[Parser] SKIPPING unrecognized output string \"%s\" in mapping:\n%s", output, p_mapping));
 			continue;
 		}
+		print_line(vformat("[Parser] Found output: output_button=%d output_axis=%d", (int)output_button, (int)output_axis));
 		ERR_CONTINUE_MSG(output_button != JoyButton::INVALID && output_axis != JoyAxis::INVALID,
 				vformat("Output string \"%s\" matched both button and axis in mapping:\n%s", output, p_mapping));
 
@@ -1526,6 +1585,7 @@ void Input::parse_mapping(const String &p_mapping) {
 			case 'b':
 				binding.inputType = TYPE_BUTTON;
 				binding.input.button = (JoyButton)input.substr(1).to_int();
+				print_line(vformat("[Parser] Created button binding: %s <- b%d", output, (int)binding.input.button));
 				break;
 			case 'a':
 				binding.inputType = TYPE_AXIS;
