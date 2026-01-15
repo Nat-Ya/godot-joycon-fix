@@ -85,7 +85,6 @@ RUN mkdir -p ${SCONS_CACHE}
 # ============================================================================
 COPY SConstruct methods.py version.py gles3_builders.py scu_builders.py ./
 COPY platform/SCsub platform/
-COPY misc/dist/android_source misc/dist/android_source
 
 # ============================================================================
 # Layer 4: Third-party libraries (changes occasionally)
@@ -164,15 +163,10 @@ RUN echo "📦 Generating Android templates via Gradle..." && \
 WORKDIR /opt/godot
 RUN mkdir -p /root/.local/share/godot/export_templates/${GODOT_VERSION} && \
     cd bin && \
-    mkdir -p android_source && \
-    cp android_*.apk android_source/ 2>/dev/null || true && \
-    cp -r ../misc/dist/android_source/* android_source/ 2>/dev/null || true && \
-    cd android_source && \
-    zip -r /root/.local/share/godot/export_templates/${GODOT_VERSION}/android_source.zip . && \
-    cd /opt/godot/bin && \
     cp android_debug.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true && \
     cp android_release.apk /root/.local/share/godot/export_templates/${GODOT_VERSION}/ 2>/dev/null || true && \
-    echo "✅ Export templates packaged"
+    echo "✅ Export templates packaged" && \
+    ls -lh /root/.local/share/godot/export_templates/${GODOT_VERSION}/
 
 # ============================================================================
 # Stage 2: Runtime - Clean image with Godot + templates
