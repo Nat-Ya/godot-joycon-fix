@@ -156,8 +156,8 @@ jobs:
           # Get timeout from previous step
           TIMEOUT="${{ steps.config.outputs.timeout }}"
 
-          # Build substitutions string
-          SUBSTITUTIONS="_GODOT_VERSION=$GODOT_VERSION,_IMAGE_TAG=$BRANCH_NAME,_BRANCH_NAME=$BRANCH_NAME,_SHORT_SHA=$SHORT_SHA,_TIMEOUT=$TIMEOUT"
+          # Build substitutions string (timeout is passed via --timeout flag, not substitution)
+          SUBSTITUTIONS="_GODOT_VERSION=$GODOT_VERSION,_IMAGE_TAG=$BRANCH_NAME,_BRANCH_NAME=$BRANCH_NAME,_SHORT_SHA=$SHORT_SHA"
 
           echo "📋 Build Configuration:"
           echo "   Godot Version: $GODOT_VERSION"
@@ -167,9 +167,11 @@ jobs:
           echo "   Machine Type: ${{ steps.config.outputs.machine_type || 'default (free tier)' }}"
 
           # Submit build with all required substitutions
+          # Note: --timeout flag overrides the timeout in cloudbuild.yaml
           BUILD_ID=$(gcloud builds submit \
             --config=cloudbuild.yaml \
             --substitutions="$SUBSTITUTIONS" \
+            --timeout="$TIMEOUT" \
             --region=${{ env.GCP_REGION }} \
             --format="value(id)")
 

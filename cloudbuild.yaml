@@ -23,7 +23,7 @@
 #   - N1_HIGHCPU_8:    8 vCPUs, 7.2 GB RAM (~$0.016/min)
 #   - N1_HIGHCPU_32:   32 vCPUs, 28.8 GB RAM (~$0.064/min)
 
-timeout: ${_TIMEOUT}
+timeout: 28800s  # 8 hours default - can be overridden via --timeout flag
 
 options:
   # Using default machine type (1 vCPU, 4 GB RAM) - free tier eligible
@@ -39,7 +39,6 @@ substitutions:
   _BRANCH_NAME: '4.3-joycon-fix'
   _SHORT_SHA: 'latest'
   _ARTIFACT_REGISTRY: 'europe-west1-docker.pkg.dev/general-476320/android-build-images'
-  _TIMEOUT: '28800s'  # 8 hours default (Godot builds are very slow on default 1 vCPU machine)
   _CACHE_BUCKET: '${PROJECT_ID}_cloudbuild'
 
 steps:
