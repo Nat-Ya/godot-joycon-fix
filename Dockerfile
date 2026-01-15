@@ -1,6 +1,18 @@
+# syntax=docker/dockerfile:1.4
 # Godot Engine with Joy-Con Fix - Docker Image (Development Build)
 # Multi-stage build for Godot editor + Android export templates
 # Uses local source code - run 'docker build' from repository root
+#
+# BUILD CACHING STRATEGY:
+# - Uses Docker BuildKit cache mounts for SCons cache
+# - Each build target is cached independently
+# - Rebuild only what changed between runs
+# - Use with: DOCKER_BUILDKIT=1 docker build --cache-from ...
+#
+# RESILIENT BUILD TIPS:
+# - Enable BuildKit: export DOCKER_BUILDKIT=1
+# - Use cache from previous builds: --cache-from type=registry,ref=<registry>/godot-cache
+# - Save cache for future builds: --cache-to type=registry,ref=<registry>/godot-cache
 
 FROM ubuntu:24.04 AS builder
 
@@ -9,6 +21,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${PATH}"
+# SCons cache directory for faster rebuilds
+ENV SCONS_CACHE=/root/.scons_cache
+ENV SCONS_CACHE_LIMIT=10000
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -55,18 +70,42 @@ ARG SCONSFLAGS=verbose=yes warnings=extra werror=yes debug_symbols=no
 WORKDIR /opt/godot
 COPY . /opt/godot
 
-# Build Godot editor (Linux)
-RUN scons platform=linuxbsd tools=yes target=editor ${SCONSFLAGS} -j$(nproc) && \
-    strip bin/godot.linuxbsd.editor.x86_64
+# ============================================================================
+# Build Stage 1: Linux Editor
+# Uses BuildKit cache mount for SCons cache - survives across builds
+# ============================================================================
+RUN --mount=type=cache,target=/root/.scons_cache,id=scons-cache \
+    echo "🔨 Building Godot Linux Editor..." && \
+    scons platform=linuxbsd tools=yes target=editor ${SCONSFLAGS} -j$(nproc) && \
+    strip bin/godot.linuxbsd.editor.x86_64 && \
+    echo "✅ Linux Editor built successfully"
 
-# Build Android export templates (arm32 and arm64) - matching Android builds workflow
-# Build arm64 templates
-RUN scons platform=android target=template_release arch=arm64 ${SCONSFLAGS} -j$(nproc) && \
-    scons platform=android target=template_debug arch=arm64 ${SCONSFLAGS} -j$(nproc)
+# ============================================================================
+# Build Stage 2: Android ARM64 Templates
+# Each architecture is built separately for better caching granularity
+# ============================================================================
+RUN --mount=type=cache,target=/root/.scons_cache,id=scons-cache \
+    echo "🔨 Building Android ARM64 Release Template..." && \
+    scons platform=android target=template_release arch=arm64 ${SCONSFLAGS} -j$(nproc) && \
+    echo "✅ Android ARM64 Release built successfully"
 
-# Build arm32 templates
-RUN scons platform=android target=template_release arch=arm32 ${SCONSFLAGS} -j$(nproc) && \
-    scons platform=android target=template_debug arch=arm32 ${SCONSFLAGS} -j$(nproc)
+RUN --mount=type=cache,target=/root/.scons_cache,id=scons-cache \
+    echo "🔨 Building Android ARM64 Debug Template..." && \
+    scons platform=android target=template_debug arch=arm64 ${SCONSFLAGS} -j$(nproc) && \
+    echo "✅ Android ARM64 Debug built successfully"
+
+# ============================================================================
+# Build Stage 3: Android ARM32 Templates
+# ============================================================================
+RUN --mount=type=cache,target=/root/.scons_cache,id=scons-cache \
+    echo "🔨 Building Android ARM32 Release Template..." && \
+    scons platform=android target=template_release arch=arm32 ${SCONSFLAGS} -j$(nproc) && \
+    echo "✅ Android ARM32 Release built successfully"
+
+RUN --mount=type=cache,target=/root/.scons_cache,id=scons-cache \
+    echo "🔨 Building Android ARM32 Debug Template..." && \
+    scons platform=android target=template_debug arch=arm32 ${SCONSFLAGS} -j$(nproc) && \
+    echo "✅ Android ARM32 Debug built successfully"
 
 # Generate Android export templates using Gradle (matching Android builds workflow)
 # This packages the native libraries into APKs for both arm32 and arm64

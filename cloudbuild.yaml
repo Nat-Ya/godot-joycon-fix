@@ -1,10 +1,24 @@
 # Google Cloud Build configuration for Godot with Joy-Con fixes
 # Builds Godot editor and Android export templates
+#
+# Machine Types available in Cloud Build (europe-west1):
+#   - (default): 1 vCPU, 4 GB RAM - FREE TIER ELIGIBLE
+#   - E2_HIGHCPU_8:    8 vCPUs, 8 GB RAM
+#   - E2_HIGHCPU_32:   32 vCPUs, 32 GB RAM
+#   - N1_HIGHCPU_8:    8 vCPUs, 7.2 GB RAM
+#   - N1_HIGHCPU_32:   32 vCPUs, 28.8 GB RAM
+#
+# Note: Only default machine type is free tier eligible (120 build-minutes/day)
+# Paid tiers: E2_HIGHCPU_8 ~$0.016/min, E2_HIGHCPU_32 ~$0.064/min
+#
+# Machine type is injected dynamically by the workflow when non-default is selected.
+# This base config uses default (free tier) when run directly.
 
-timeout: 14400s  # 4 hours (Godot builds are slow on default machine with 1 vCPU)
+timeout: ${_TIMEOUT}
 
 options:
-  # Using Cloud Build's default machine type (1 vCPU, 4 GB RAM at time of writing) - free tier eligible
+  # Using default machine type (1 vCPU, 4 GB RAM) - free tier eligible
+  # machineType is injected by workflow when non-default is selected
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
 
@@ -16,6 +30,7 @@ substitutions:
   _BRANCH_NAME: '4.3-joycon-fix'
   _SHORT_SHA: 'latest'
   _ARTIFACT_REGISTRY: 'europe-west1-docker.pkg.dev/general-476320/android-build-images'
+  _TIMEOUT: '28800s'  # 8 hours default (Godot builds are very slow on default 1 vCPU machine)
 
 steps:
   # Step 1: Build Docker image with Godot
