@@ -1,18 +1,27 @@
 # Google Cloud Build configuration for Godot with Joy-Con fixes
 # Builds Godot editor and Android export templates
 #
+# CACHING STRATEGY:
+# - Uses Kaniko for Docker layer caching in Artifact Registry
+# - Layer structure in Dockerfile optimized for cache reuse:
+#   1. Base OS + dependencies    (rarely changes)
+#   2. Android SDK               (rarely changes)
+#   3. Build system files        (rarely changes)
+#   4. Third-party libraries     (occasionally changes)
+#   5. Core/platform sources     (frequently changes)
+#   6. Build execution           (depends on source changes)
+#
+# RESILIENCE:
+# - Kaniko caches successful layers in Artifact Registry
+# - Partial source changes only rebuild affected layers
+# - 8-hour default timeout for slow free-tier builds
+#
 # Machine Types available in Cloud Build (europe-west1):
-#   - (default): 1 vCPU, 4 GB RAM - FREE TIER ELIGIBLE
-#   - E2_HIGHCPU_8:    8 vCPUs, 8 GB RAM
-#   - E2_HIGHCPU_32:   32 vCPUs, 32 GB RAM
-#   - N1_HIGHCPU_8:    8 vCPUs, 7.2 GB RAM
-#   - N1_HIGHCPU_32:   32 vCPUs, 28.8 GB RAM
-#
-# Note: Only default machine type is free tier eligible (120 build-minutes/day)
-# Paid tiers: E2_HIGHCPU_8 ~$0.016/min, E2_HIGHCPU_32 ~$0.064/min
-#
-# Machine type is injected dynamically by the workflow when non-default is selected.
-# This base config uses default (free tier) when run directly.
+#   - (default): 1 vCPU, 4 GB RAM - FREE TIER ELIGIBLE (120 min/day)
+#   - E2_HIGHCPU_8:    8 vCPUs, 8 GB RAM   (~$0.016/min)
+#   - E2_HIGHCPU_32:   32 vCPUs, 32 GB RAM (~$0.064/min)
+#   - N1_HIGHCPU_8:    8 vCPUs, 7.2 GB RAM (~$0.016/min)
+#   - N1_HIGHCPU_32:   32 vCPUs, 28.8 GB RAM (~$0.064/min)
 
 timeout: ${_TIMEOUT}
 
@@ -31,77 +40,131 @@ substitutions:
   _SHORT_SHA: 'latest'
   _ARTIFACT_REGISTRY: 'europe-west1-docker.pkg.dev/general-476320/android-build-images'
   _TIMEOUT: '28800s'  # 8 hours default (Godot builds are very slow on default 1 vCPU machine)
+  _CACHE_BUCKET: '${PROJECT_ID}_cloudbuild'
 
 steps:
-  # Step 1: Build Docker image with Godot
-  - name: 'gcr.io/cloud-builders/docker'
+  # ============================================================================
+  # Step 1: Build Docker image with Kaniko (with layer caching)
+  # ============================================================================
+  # Kaniko caches layers in Artifact Registry for faster subsequent builds
+  # Cache location: ${_ARTIFACT_REGISTRY}/godot-joycon-fix/cache
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-image-kaniko'
     args:
-      - 'build'
-      - '-t'
-      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}'
-      - '-t'
-      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_SHORT_SHA}'
-      - '-t'
-      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:latest'
-      - '--build-arg'
-      - 'GODOT_BRANCH=${_BRANCH_NAME}'
-      - '--build-arg'
-      - 'GODOT_VERSION=${_GODOT_VERSION}'
-      - '--build-arg'
-      - 'SCONSFLAGS=verbose=yes warnings=extra werror=no debug_symbols=no'
-      - '.'
-    id: 'build-image'
+      - '--dockerfile=Dockerfile'
+      - '--context=.'
+      - '--destination=${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}'
+      - '--destination=${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_SHORT_SHA}'
+      - '--destination=${_ARTIFACT_REGISTRY}/godot-joycon-fix:latest'
+      # Enable layer caching in Artifact Registry
+      - '--cache=true'
+      - '--cache-repo=${_ARTIFACT_REGISTRY}/godot-joycon-fix/cache'
+      - '--cache-ttl=720h'  # 30 days cache TTL
+      # Build args
+      - '--build-arg=GODOT_VERSION=${_GODOT_VERSION}'
+      - '--build-arg=SCONSFLAGS=verbose=yes warnings=extra werror=no debug_symbols=no'
+      # Optimization flags
+      - '--snapshotMode=redo'
+      - '--use-new-run'
+      # Log progress
+      - '--verbosity=info'
 
-  # Step 2: Push to Artifact Registry
+  # ============================================================================
+  # Step 2: Extract APKs from built image
+  # ============================================================================
   - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - '--all-tags'
-      - '${_ARTIFACT_REGISTRY}/godot-joycon-fix'
-    id: 'push-image'
-
-  # Step 3: Extract APKs from built image
-  - name: 'gcr.io/cloud-builders/docker'
+    id: 'extract-apks'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        echo "📦 Extracting APKs from built image..."
+        
+        # Pull the image we just built
+        docker pull ${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}
+        
         # Create temporary container
         CONTAINER_ID=$$(docker create ${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG})
-
+        
         # Extract APKs
-        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_debug.apk ./android_debug.apk
-        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_release.apk ./android_release.apk
-
+        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_debug.apk ./android_debug.apk || echo "⚠️ android_debug.apk not found"
+        docker cp $$CONTAINER_ID:/root/.local/share/godot/export_templates/${_GODOT_VERSION}/android_release.apk ./android_release.apk || echo "⚠️ android_release.apk not found"
+        
+        # Extract Linux editor binary
+        docker cp $$CONTAINER_ID:/opt/godot/bin/godot.linuxbsd.editor.x86_64 ./godot.linuxbsd.editor.x86_64 || echo "⚠️ Linux editor not found"
+        
         # Cleanup
         docker rm $$CONTAINER_ID
+        
+        # Verify extracted files
+        echo "✅ Extracted artifacts:"
+        ls -lh android_*.apk godot.* 2>/dev/null || echo "⚠️ Some artifacts may be missing"
 
-        # Verify
-        ls -lh android_*.apk
-    id: 'extract-apks'
-
-  # Step 4: Upload APKs as artifacts to GCS bucket
+  # ============================================================================
+  # Step 3: Upload artifacts to GCS bucket
+  # ============================================================================
   - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'upload-artifacts'
+    entrypoint: 'bash'
     args:
-      - 'cp'
-      - 'android_debug.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}/android_debug.apk'
-    id: 'upload-debug-apk'
-
-  - name: 'gcr.io/cloud-builders/gsutil'
-    args:
-      - 'cp'
-      - 'android_release.apk'
-      - 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}/android_release.apk'
-    id: 'upload-release-apk'
+      - '-c'
+      - |
+        echo "📤 Uploading artifacts to GCS..."
+        DEST="gs://${_CACHE_BUCKET}/godot-joycon-fix/${_SHORT_SHA}"
+        
+        # Upload APKs
+        if [ -f android_debug.apk ]; then
+          gsutil cp android_debug.apk $${DEST}/android_debug.apk
+          echo "✅ Uploaded android_debug.apk"
+        fi
+        
+        if [ -f android_release.apk ]; then
+          gsutil cp android_release.apk $${DEST}/android_release.apk
+          echo "✅ Uploaded android_release.apk"
+        fi
+        
+        # Upload Linux editor
+        if [ -f godot.linuxbsd.editor.x86_64 ]; then
+          gsutil cp godot.linuxbsd.editor.x86_64 $${DEST}/godot.linuxbsd.editor.x86_64
+          echo "✅ Uploaded godot.linuxbsd.editor.x86_64"
+        fi
+        
+        # Create a manifest with build info
+        cat > build_manifest.json << EOF
+        {
+          "build_time": "$$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "branch": "${_BRANCH_NAME}",
+          "commit": "${_SHORT_SHA}",
+          "godot_version": "${_GODOT_VERSION}",
+          "image_tag": "${_IMAGE_TAG}",
+          "artifacts": {
+            "android_debug_apk": "$${DEST}/android_debug.apk",
+            "android_release_apk": "$${DEST}/android_release.apk",
+            "linux_editor": "$${DEST}/godot.linuxbsd.editor.x86_64",
+            "docker_image": "${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}"
+          }
+        }
+        EOF
+        
+        gsutil cp build_manifest.json $${DEST}/build_manifest.json
+        echo "✅ Uploaded build manifest"
+        
+        # Also copy to 'latest' for easy access
+        gsutil cp $${DEST}/build_manifest.json gs://${_CACHE_BUCKET}/godot-joycon-fix/latest/build_manifest.json
+        
+        echo ""
+        echo "📦 Build artifacts available at:"
+        echo "   $${DEST}/"
 
 # Store APKs as build artifacts (downloadable from Cloud Build UI)
 artifacts:
   objects:
-    location: 'gs://${PROJECT_ID}_cloudbuild/godot-joycon-fix/${_SHORT_SHA}'
+    location: 'gs://${_CACHE_BUCKET}/godot-joycon-fix/${_SHORT_SHA}'
     paths:
       - 'android_debug.apk'
       - 'android_release.apk'
+      - 'godot.linuxbsd.editor.x86_64'
+      - 'build_manifest.json'
 
 images:
   - '${_ARTIFACT_REGISTRY}/godot-joycon-fix:${_IMAGE_TAG}'

@@ -41,6 +41,12 @@ on:
         default: '28800'
         type: string
 
+      clear_cache:
+        description: 'Clear Kaniko layer cache before build'
+        required: false
+        default: false
+        type: boolean
+
 env:
   # Use secrets if available, otherwise fall back to defaults
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'general-476320' }}
@@ -83,6 +89,21 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Clear Kaniko cache (if requested)
+        if: ${{ github.event.inputs.clear_cache == 'true' }}
+        run: |
+          echo "🗑️  Clearing Kaniko layer cache..."
+          # Delete all cache tags from the cache repository
+          CACHE_REPO="${{ env.GCP_ARTIFACT_REGISTRY }}/godot-joycon-fix/cache"
+          
+          # List and delete cache images
+          gcloud artifacts docker images list $CACHE_REPO --format="value(package)" 2>/dev/null | while read -r image; do
+            echo "Deleting cache image: $image"
+            gcloud artifacts docker images delete "$image" --quiet --delete-tags 2>/dev/null || true
+          done
+          
+          echo "✅ Cache cleared"
 
       - name: Prepare build configuration
         id: config
@@ -192,6 +213,7 @@ jobs:
         run: |
           echo "## 🚀 GCP Cloud Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Configuration" >> $GITHUB_STEP_SUMMARY
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Build ID** | \`${{ steps.build.outputs.build_id }}\` |" >> $GITHUB_STEP_SUMMARY
@@ -200,18 +222,37 @@ jobs:
           echo "| **Commit** | \`$(git rev-parse --short HEAD)\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Machine Type** | \`${{ steps.config.outputs.machine_type || 'default (1 vCPU, free tier)' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Timeout** | \`${{ steps.config.outputs.timeout }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Cache Cleared** | \`${{ github.event.inputs.clear_cache || 'false' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 🗄️ Caching Strategy" >> $GITHUB_STEP_SUMMARY
+          echo "This build uses **Kaniko layer caching** in Artifact Registry:" >> $GITHUB_STEP_SUMMARY
+          echo "- Base OS & dependencies: cached (rarely changes)" >> $GITHUB_STEP_SUMMARY
+          echo "- Android SDK: cached (rarely changes)" >> $GITHUB_STEP_SUMMARY
+          echo "- Third-party libraries: cached (occasionally changes)" >> $GITHUB_STEP_SUMMARY
+          echo "- Source code: rebuilt on changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Cache location: \`${{ env.GCP_ARTIFACT_REGISTRY }}/godot-joycon-fix/cache\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "### 📥 Pull Docker Image" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ${{ env.GCP_ARTIFACT_REGISTRY }}/godot-joycon-fix:${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Download APKs" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 📦 Download Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "SHORT_SHA=\$(git rev-parse --short HEAD)" >> $GITHUB_STEP_SUMMARY
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_STEP_SUMMARY
+          echo "# Download APKs" >> $GITHUB_STEP_SUMMARY
           echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/\${SHORT_SHA}/android_debug.apk ./" >> $GITHUB_STEP_SUMMARY
+          echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/\${SHORT_SHA}/android_release.apk ./" >> $GITHUB_STEP_SUMMARY
+          echo "# Download Linux Editor" >> $GITHUB_STEP_SUMMARY
+          echo "gsutil cp gs://${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/\${SHORT_SHA}/godot.linuxbsd.editor.x86_64 ./" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
           echo "- [Cloud Build Console](https://console.cloud.google.com/cloud-build/builds;region=${{ env.GCP_REGION }}/${{ steps.build.outputs.build_id }}?project=${{ env.GCP_PROJECT_ID }})" >> $GITHUB_STEP_SUMMARY
           echo "- [Artifact Registry](https://console.cloud.google.com/artifacts/docker/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_REGION }}/android-build-images/godot-joycon-fix?project=${{ env.GCP_PROJECT_ID }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [GCS Artifacts](https://console.cloud.google.com/storage/browser/${{ env.GCP_PROJECT_ID }}_cloudbuild/godot-joycon-fix/)" >> $GITHUB_STEP_SUMMARY
