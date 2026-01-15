@@ -150,18 +150,22 @@ jobs:
           fi
 
           # Get branch name and short SHA
+          # Sanitize branch name for Docker tag (replace / with -)
           BRANCH_NAME="${{ github.ref_name }}"
+          IMAGE_TAG=$(echo "$BRANCH_NAME" | sed 's/\//-/g')
           SHORT_SHA=$(git rev-parse --short HEAD)
 
           # Get timeout from previous step
           TIMEOUT="${{ steps.config.outputs.timeout }}"
 
           # Build substitutions string (timeout is passed via --timeout flag, not substitution)
-          SUBSTITUTIONS="_GODOT_VERSION=$GODOT_VERSION,_IMAGE_TAG=$BRANCH_NAME,_BRANCH_NAME=$BRANCH_NAME,_SHORT_SHA=$SHORT_SHA"
+          # IMAGE_TAG is sanitized (/ replaced with -) for Docker compatibility
+          SUBSTITUTIONS="_GODOT_VERSION=$GODOT_VERSION,_IMAGE_TAG=$IMAGE_TAG,_BRANCH_NAME=$BRANCH_NAME,_SHORT_SHA=$SHORT_SHA"
 
           echo "📋 Build Configuration:"
           echo "   Godot Version: $GODOT_VERSION"
           echo "   Branch: $BRANCH_NAME"
+          echo "   Image Tag: $IMAGE_TAG"
           echo "   Commit: $SHORT_SHA"
           echo "   Timeout: $TIMEOUT"
           echo "   Machine Type: ${{ steps.config.outputs.machine_type || 'default (free tier)' }}"
