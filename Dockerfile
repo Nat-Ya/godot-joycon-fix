@@ -83,7 +83,9 @@ RUN mkdir -p ${SCONS_CACHE}
 # Layer 3: Build system files (changes rarely)
 # These files define HOW to build, not WHAT to build
 # ============================================================================
-COPY SConstruct methods.py version.py gles3_builders.py scu_builders.py ./
+# Copy all Python build helper files required by SConstruct
+COPY SConstruct methods.py version.py ./
+COPY gles3_builders.py glsl_builders.py platform_methods.py scu_builders.py ./
 COPY platform/SCsub platform/
 
 # ============================================================================
